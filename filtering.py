@@ -5,6 +5,9 @@ import math
 def nothing(*arg):
     pass
 
+refPt = []
+cropping = False
+crop_flag = False
 
 def preview(image, output, gray, gray_blurred):
     result1 = np.hstack([gray_blurred, gray])
@@ -12,7 +15,66 @@ def preview(image, output, gray, gray_blurred):
     result1 = cv2.cvtColor(result1, cv2.COLOR_GRAY2BGR)
     result = np.hstack([result1, result2])
     result = cv2.resize(result, (2016, 1008))
+    if ((cropping == False) & (crop_flag == True)):
+        cv2.rectangle(result, refPt[0], refPt[1], (0, 255, 0), 2)
     cv2.imshow('Output', result)
+
+def get_center(detected):
+    center = [0,0]
+    for k in range(3):
+        center[0] = center[0] + detected[k][0]
+        center[1] = center[1] + detected[k][1]
+    center[0] = int(center[0] / 3)
+    center[1] = int(center[1] / 3)
+    return center
+
+def get_angle(center, middle):
+    if (middle[0]-center[0]) != 0:
+        angle = math.atan((middle[1]-center[1])/(middle[0]-center[0]))*180/math.pi
+    else:
+        angle = 0
+    return angle
+
+def get_length(line):
+    length = math.sqrt(line[0]*line[0]+line[1]*line[1])
+    return length
+
+def get_polygon(event, x, y, flags, param ):
+        global refPt, cropping, crop_flag
+        # if the left mouse button was clicked, record the starting
+        # (x, y) coordinates and indicate that cropping is being
+        # performed
+        if event == cv2.EVENT_LBUTTONDOWN:
+            refPt = [(x, y)]
+            cropping = True
+        # check to see if the left mouse button was released
+        elif event == cv2.EVENT_LBUTTONUP:
+            # record the ending (x, y) coordinates and indicate that
+            # the cropping operation is finished
+            refPt.append((x, y))
+            cropping = False
+            crop_flag = True
+
+
+
+
+def get_direction(detected):
+    length_list = [0,0,0]
+    length_list[0] = get_length([detected[0][0]-detected[1][0],detected[0][1]-detected[1][1]])
+    length_list[1] = get_length([detected[1][0] - detected[2][0], detected[1][1] - detected[2][1]])
+    length_list[2] = get_length([detected[2][0] - detected[0][0], detected[2][1] - detected[0][1]])
+    minIndex = length_list.index(min(length_list))
+    if minIndex == 0:
+        x_l = (detected[0][0] + detected[1][0]) / 2
+        y_l = (detected[0][1] + detected[1][1]) / 2
+    if minIndex == 1:
+        x_l = (detected[1][0] + detected[2][0]) / 2
+        y_l = (detected[1][1] + detected[2][1]) / 2
+    if minIndex == 2:
+        x_l = (detected[2][0] + detected[0][0]) / 2
+        y_l = (detected[2][1] + detected[0][1]) / 2
+    middle = [int(x_l), int(y_l)]
+    return middle
 
 def flow_filter(x, y, detection):
     pass
@@ -21,13 +83,14 @@ def prob_filter(x, y, com):
     pass
 
 cv2.namedWindow('Output')
+cv2.setMouseCallback("Output", get_polygon)
 cv2.createTrackbar('Ratio of the blur', 'Output', 4, 10, nothing)
 cv2.createTrackbar('Ratio of the resolution x10', 'Output', 10, 30, nothing)
 cv2.createTrackbar('Param1', 'Output', 73, 100, nothing)
 cv2.createTrackbar('Param2', 'Output', 23, 100, nothing)
-cv2.createTrackbar('Min distance', 'Output', 4, 20, nothing)
-cv2.createTrackbar('Min radius', 'Output', 2, 15, nothing)
-cv2.createTrackbar('Max radius', 'Output', 15, 30, nothing)
+cv2.createTrackbar('Min distance', 'Output', 4, 30, nothing)
+cv2.createTrackbar('Min radius', 'Output', 18, 25, nothing)
+cv2.createTrackbar('Max radius', 'Output', 25, 30, nothing)
 
 cam = cv2.VideoCapture('http://192.168.0.117:8080/video')
 log = cv2.imread('nodata.png')
@@ -98,51 +161,17 @@ while True:
                 del detected[0]
                 detected.append([x, y])
 
-            center_x = 0
-            center_y = 0
-            sm = [0, 0, 0]
             for k in range(3):
-                sm[k] = detected[k][0]+detected[k][1]
-                cv2.circle(image, (detected[k][0], detected[k][1]), 4, (64, 128, 255), 3)
-                center_x=center_x + detected[k][0]
-                center_y=center_y + detected[k][1]
-            center_x=center_x/3
-            center_y=center_y/3
-            cv2.circle(image, (int(center_x), int(center_y)), 4, (0, 255, 255), 3)
+                cv2.circle(image, (detected[k][0],detected[k][1]), 8, (0, 0, 0), 4)
 
-            ch = [abs(sm[0]-sm[1]),abs(sm[1]-sm[2]),abs(sm[2]-sm[0])]
-            minIndex = ch.index(min(ch))
-            center_y = int(center_y)
-            center_x = int(center_x)
-            if minIndex == 0:
-                x_l = (detected[0][0]+detected[1][0])/2
-                y_l = (detected[0][1]+detected[1][1])/2
-                cv2.line(image, (center_x, center_y), (int(x_l), int(y_l)), (0, 255, 0), thickness=2)
-            if minIndex == 1:
-                x_l = (detected[1][0]+detected[2][0])/2
-                y_l = (detected[1][1]+detected[2][1])/2
-                cv2.line(image, (center_x, center_y), (int(x_l), int(y_l)), (0, 255, 0), thickness=2)
-            if minIndex == 2:
-                x_l = (detected[2][0]+detected[0][0])/2
-                y_l = (detected[2][1]+detected[0][1])/2
-                cv2.line(image, (center_x, center_y), (int(x_l), int(y_l)), (0, 255, 0), thickness=2)
-            cv2.line(image, (int(x_l), center_y), (center_x, center_y), (40, 10, 255), thickness=2)
-            line1 = [center_x-x_l, center_y-y]
-            line2 = [x_l - center_x, 0]
-            dist1 = math.sqrt(line1[0]*line1[0]+line1[1]*line1[1])
-            dist2 = math.sqrt(line2[0] * line2[0] + line2[1] * line2[1])
-            if flag3 < 10:
-                flag3=flag3 + 1
-                direction1 = direction1 + np.arcsin(dist2/dist1)
-            else:
-                flag3 = 1
-                r_direction = direction1 / 10
-                direction1 = 0
-                rd = r_direction*180/math.pi
-                rd = math.atan((y_l - center_y) / (x_l - center_x))*180/math.pi
-            cv2.putText(image, str(rd)[:5], (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, 255, 3)
+            center = get_center(detected)
+            cv2.circle(image, (center[0], center[1]), 4, (0, 255, 255), 3)
 
+            middle = get_direction(detected)
+            cv2.line(image, (center[0],center[1]), (middle[0],middle[1]), (0, 255, 0), thickness=2)
 
+            angle = get_angle(center, middle)
+            cv2.putText(image, str(angle)[:5], (100, 100), cv2.FONT_ITALIC, 4, 255, 3)
 
             preview(image, output, gray, gray_blurred)
     else:
