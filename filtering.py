@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-
+import math
 
 def nothing(*arg):
     pass
@@ -32,7 +32,9 @@ cv2.createTrackbar('Max radius', 'Output', 15, 30, nothing)
 cam = cv2.VideoCapture('http://192.168.0.117:8080/video')
 log = cv2.imread('nodata.png')
 detected =[ [-1, -1] , [-1, -1], [-1, -1] ]
-
+flag3 = 1
+direction1 = 0
+rd = 0
 while True:
 
     flag, image = cam.read()
@@ -96,8 +98,51 @@ while True:
                 del detected[0]
                 detected.append([x, y])
 
+            center_x = 0
+            center_y = 0
+            sm = [0, 0, 0]
             for k in range(3):
-                cv2.circle(image, (detected[k][0], detected[k][1]), 4, (255, 0, 255), 3)
+                sm[k] = detected[k][0]+detected[k][1]
+                cv2.circle(image, (detected[k][0], detected[k][1]), 4, (64, 128, 255), 3)
+                center_x=center_x + detected[k][0]
+                center_y=center_y + detected[k][1]
+            center_x=center_x/3
+            center_y=center_y/3
+            cv2.circle(image, (int(center_x), int(center_y)), 4, (0, 255, 255), 3)
+
+            ch = [abs(sm[0]-sm[1]),abs(sm[1]-sm[2]),abs(sm[2]-sm[0])]
+            minIndex = ch.index(min(ch))
+            center_y = int(center_y)
+            center_x = int(center_x)
+            if minIndex == 0:
+                x_l = (detected[0][0]+detected[1][0])/2
+                y_l = (detected[0][1]+detected[1][1])/2
+                cv2.line(image, (center_x, center_y), (int(x_l), int(y_l)), (0, 255, 0), thickness=2)
+            if minIndex == 1:
+                x_l = (detected[1][0]+detected[2][0])/2
+                y_l = (detected[1][1]+detected[2][1])/2
+                cv2.line(image, (center_x, center_y), (int(x_l), int(y_l)), (0, 255, 0), thickness=2)
+            if minIndex == 2:
+                x_l = (detected[2][0]+detected[0][0])/2
+                y_l = (detected[2][1]+detected[0][1])/2
+                cv2.line(image, (center_x, center_y), (int(x_l), int(y_l)), (0, 255, 0), thickness=2)
+            cv2.line(image, (int(x_l), center_y), (center_x, center_y), (40, 10, 255), thickness=2)
+            line1 = [center_x-x_l, center_y-y]
+            line2 = [x_l - center_x, 0]
+            dist1 = math.sqrt(line1[0]*line1[0]+line1[1]*line1[1])
+            dist2 = math.sqrt(line2[0] * line2[0] + line2[1] * line2[1])
+            if flag3 < 10:
+                flag3=flag3 + 1
+                direction1 = direction1 + np.arcsin(dist2/dist1)
+            else:
+                flag3 = 1
+                r_direction = direction1 / 10
+                direction1 = 0
+                rd = r_direction*180/math.pi
+                rd = math.atan((y_l - center_y) / (x_l - center_x))*180/math.pi
+            cv2.putText(image, str(rd)[:5], (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 4, 255, 3)
+
+
 
             preview(image, output, gray, gray_blurred)
     else:
