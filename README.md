@@ -1,14 +1,9 @@
 # inspector
-Smart mapping based on ROS 
+Inspector
 
-This system of stereographic inspection of the internal space of the pipeline allows you to build a three-dimensional map of the investigated object.  The usefulness of the project lies in the possibility of finding the pipeline by overlaying the scanned area on a two-dimensional map of the area.  It is proposed to use an accelerometer and magnetometer to determine the absolute course of the moving platform and determine the position of the robot based on the rotation of the actuators.
+The project is dedicated to working with a system for detecting mobile robots. The functioning of computer vision algorithms is based on working with the opencv library for python. At the first stage of the project, three circular beacons are used to determine the coordinates and direction of the robot. The control of the mobile platform is realized by sending serial commands to the serial port of the controlling controller via bluetooth.
 
-Three-dimensional survey will be carried out using SLAM algorithms.
-
-It is possible to use the following mapping technologies:
-
-https://github.com/OSLL/tiny-slam-ros
-This package provides ROS implentation of the tinySLAM (https://openslam.org/tinyslam.html) that is one of the most simpliest and lightweight SLAM methods.
-
-https://github.com/ros-perception/slam_gmapping
-slam_gmapping contains a wrapper around gmapping which provides SLAM capabilities.
+Sources:
+https://opencv.org/
+https://numpy.org/
+https://pypi.org/project/pyserial/
